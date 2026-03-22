@@ -1,17 +1,19 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use crate::persistence::save;
 
 pub fn store (db: &Arc<Mutex<HashMap<String, String>>>, command: Command) -> String {
     match command {
         Command::Get { key } => get(db, key),
         Command::Set {key, value} => set(db, key, value),
         Command::Display => display(db),
-        Command::Unknown => String::from("Unknown command")
+        Command::Unknown => String::from("Unknown command\n")
     }
 }
 
-fn set(db: &Arc<Mutex<HashMap<String, String>>>, key: String, value: String) -> String {
+fn set(db: &Arc<Mutex<HashMap<String, String>>>, key: String, value: String,) -> String {
     db.lock().unwrap().insert(key, value);
+    save(db);
     String::from("OK\n")
 }
 
@@ -28,7 +30,7 @@ fn display(db: &Arc<Mutex<HashMap<String, String>>>) -> String {
 
 pub enum Command {
     Get { key: String },
-    Set { key: String, value: String},
+    Set { key: String, value: String },
     Display,
     Unknown
 }
