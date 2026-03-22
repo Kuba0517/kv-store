@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use crate::store::store;
 use crate::store::Command;
 
@@ -10,10 +11,13 @@ pub fn server(db: &Arc<Mutex<HashMap<String, String>>>) {
     let listener = TcpListener::bind(IP_PORT).unwrap();
 
     for stream in listener.incoming() {
-        let stream = stream.unwrap();
+        let db_clone = Arc::clone(&db);
+        thread::spawn(move || {
+            let stream = stream.unwrap();
 
-        println!("Connected!!");
-        handle_connection(stream, db);
+            println!("Connected!!");
+            handle_connection(stream, &db_clone);
+        });
     }
 }
 
