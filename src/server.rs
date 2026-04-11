@@ -57,7 +57,6 @@ fn parse_request(request: &str) -> Command {
         ["DELETE", key] => Command::Delete {
             key: (*key).to_string()
         },
-        // ["DISPLAY"] => Command::Display,
         _ => Command::Unknown,
     }
 }

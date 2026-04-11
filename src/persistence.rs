@@ -60,6 +60,11 @@ pub fn load() -> HashMap<String, KeyDirRecord> {
 
         key = String::from_utf8(buff_key).unwrap();
 
+        if value_size_value == 0 {
+            db.remove(&key);
+            continue;
+        }
+
         let value_pos = buff.stream_position().unwrap();
 
         buff.seek(SeekFrom::Current(value_size_value as i64)).unwrap();
