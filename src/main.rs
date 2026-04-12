@@ -6,7 +6,8 @@ mod server;
 mod store;
 mod persistence;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let db: Arc<Mutex<HashMap<String, KeyDirRecord>>> = Arc::new(Mutex::new(load()));
-    server::server(&db);
+    server::server(&db).await;
 }

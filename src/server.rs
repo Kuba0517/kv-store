@@ -1,35 +1,33 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
+use tokio::net::{TcpListener, TcpStream};
 use crate::persistence::KeyDirRecord;
 use crate::store::store;
 use crate::store::Command;
 
-pub fn server(db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
+pub async fn server(db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
     const IP_PORT: &str = "127.0.0.1:7878";
-    let listener = TcpListener::bind(IP_PORT).unwrap();
+    let listener = TcpListener::bind(IP_PORT).await.unwrap();
 
-    for stream in listener.incoming() {
+    loop {
+        let (socket, _) = listener.accept().await.unwrap();
         let db_clone = Arc::clone(db);
-        thread::spawn(move || {
-            let stream = stream.unwrap();
-
+        tokio::spawn(async move {
             println!("Connected!!");
-            handle_connection(stream, &db_clone);
+            handle_connection(socket, &db_clone).await;
         });
     }
 }
 
-fn handle_connection(stream: TcpStream, db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
-    let reader_stream = stream.try_clone().unwrap();
-    let mut reader = BufReader::new(reader_stream);
-    let mut writer = BufWriter::new(&stream);
+async fn handle_connection(mut socket: TcpStream, db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
+    let (reader, writer) = socket.split();
+    let mut buf_reader = BufReader::new(reader);
+    let mut buf_writer = BufWriter::new(writer);
 
     loop {
         let mut line = String::new();
-        match reader.read_line(&mut line) {
+        match buf_reader.read_line(&mut line).await {
             Ok(0) | Err(_) => {
                 println!("Client disconnected");
                 return;
@@ -38,8 +36,8 @@ fn handle_connection(stream: TcpStream, db: &Arc<Mutex<HashMap<String, KeyDirRec
         }
 
         let response = store(db, parse_request(&line));
-        writer.write_all(response.as_bytes()).unwrap();
-        writer.flush().unwrap();
+        buf_writer.write_all(response.as_bytes()).await.unwrap();
+        buf_writer.flush().await.unwrap();
     }
 }
 
