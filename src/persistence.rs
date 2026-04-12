@@ -37,10 +37,12 @@ pub fn load() -> HashMap<String, KeyDirRecord> {
     let mut buff_key_size: [u8; 4] = [0; 4];
     let mut buff_value_size: [u8; 4] = [0; 4];
 
+    let mut crc_value: u32;
     let mut timestamp_value: u64;
     let mut key_size_value: u32;
     let mut value_size_value: u32;
     let mut key: String;
+    let mut value: String;
 
     loop {
         if buff.read_exact(&mut buff_crc).is_err() {
@@ -50,6 +52,7 @@ pub fn load() -> HashMap<String, KeyDirRecord> {
         buff.read_exact(&mut buff_key_size).unwrap();
         buff.read_exact(&mut buff_value_size).unwrap();
 
+        crc_value = u32::from_le_bytes(buff_crc);
         timestamp_value = u64::from_le_bytes(buff_timestamp);
         key_size_value = u32::from_le_bytes(buff_key_size);
         value_size_value = u32::from_le_bytes(buff_value_size);
@@ -67,7 +70,20 @@ pub fn load() -> HashMap<String, KeyDirRecord> {
 
         let value_pos = buff.stream_position().unwrap();
 
-        buff.seek(SeekFrom::Current(value_size_value as i64)).unwrap();
+        let mut buff_value: Vec<u8> = vec![0; value_size_value as usize];
+        buff.read_exact(&mut buff_value[..]).unwrap();
+        value = String::from_utf8(buff_value).unwrap();
+
+        let mut checksum_data = Vec::new();
+        checksum_data.extend(timestamp_value.to_le_bytes());
+        checksum_data.extend(key_size_value.to_le_bytes());
+        checksum_data.extend(value_size_value.to_le_bytes());
+        checksum_data.extend(key.as_bytes());
+        checksum_data.extend(value.as_bytes());
+
+        if !check_crc(crc_value, checksum_data) {
+            break;
+        }
 
         db.insert(key, KeyDirRecord {
             file_id: 1,
@@ -131,4 +147,8 @@ pub fn read_value(record: &KeyDirRecord) -> String {
     file.read_exact(&mut buff_value[..]).unwrap();
 
     format!("{}\n", String::from_utf8(buff_value).unwrap())
+}
+
+fn check_crc(crc: u32, byte_to_check: Vec<u8>) -> bool {
+    crc == X25.checksum(&byte_to_check)
 }
