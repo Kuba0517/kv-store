@@ -1,10 +1,10 @@
+use crate::persistence::{KeyDirRecord, load};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crate::persistence::{load, KeyDirRecord};
 
+mod persistence;
 mod server;
 mod store;
-mod persistence;
 
 #[tokio::main]
 async fn main() {

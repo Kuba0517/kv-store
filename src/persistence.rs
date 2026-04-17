@@ -7,20 +7,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const FILE_PATH: &str = "./db.bin";
 const X25: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
-pub struct StoreRecord {
-    crc: u32,
-    timestamp: u64,
-    key_size: u32,
-    value_size: u32,
-    key: Vec<u8>,
-    value: Vec<u8>
-}
-
 pub struct KeyDirRecord {
+    // reserved for multiple data files
+    #[allow(dead_code)]
     file_id: u32,
     value_size: u32,
     value_pos: usize,
-    timestamp: u64
+    // reserved for merge ordering
+    #[allow(dead_code)]
+    timestamp: u64,
 }
 
 pub fn load() -> HashMap<String, KeyDirRecord> {
@@ -85,12 +80,15 @@ pub fn load() -> HashMap<String, KeyDirRecord> {
             break;
         }
 
-        db.insert(key, KeyDirRecord {
-            file_id: 1,
-            value_size: value_size_value,
-            value_pos: value_pos as usize,
-            timestamp: timestamp_value
-        });
+        db.insert(
+            key,
+            KeyDirRecord {
+                file_id: 1,
+                value_size: value_size_value,
+                value_pos: value_pos as usize,
+                timestamp: timestamp_value,
+            },
+        );
     }
 
     db
@@ -105,9 +103,12 @@ pub fn save(key: &str, value: &str) -> KeyDirRecord {
         .open(file_path)
         .unwrap();
 
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-    let key_size = key.as_bytes().len() as u32;
-    let value_size = value.as_bytes().len() as u32;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let key_size = key.len() as u32;
+    let value_size = value.len() as u32;
 
     let mut checksum_data = Vec::new();
     checksum_data.extend(timestamp.to_le_bytes());
@@ -118,26 +119,31 @@ pub fn save(key: &str, value: &str) -> KeyDirRecord {
 
     let crc = X25.checksum(&checksum_data);
 
-    file.write_all(&crc.to_le_bytes()).expect("Wasn't able to save crc");
-    file.write_all(&timestamp.to_le_bytes()).expect("Wasn't able to save timestamp");
-    file.write_all(&key_size.to_le_bytes()).expect("Wasn't able to save key_size");
-    file.write_all(&value_size.to_le_bytes()).expect("Wasn't able to save value_size");
-    file.write_all(key.as_bytes()).expect("Wasn't able to save key");
+    file.write_all(&crc.to_le_bytes())
+        .expect("Wasn't able to save crc");
+    file.write_all(&timestamp.to_le_bytes())
+        .expect("Wasn't able to save timestamp");
+    file.write_all(&key_size.to_le_bytes())
+        .expect("Wasn't able to save key_size");
+    file.write_all(&value_size.to_le_bytes())
+        .expect("Wasn't able to save value_size");
+    file.write_all(key.as_bytes())
+        .expect("Wasn't able to save key");
 
     let value_pos = file.stream_position().unwrap();
 
-    file.write_all(value.as_bytes()).expect("Wasn't able to save value");
+    file.write_all(value.as_bytes())
+        .expect("Wasn't able to save value");
 
     KeyDirRecord {
         file_id: 1,
         value_size,
         value_pos: value_pos as usize,
-        timestamp
+        timestamp,
     }
 }
 
 pub fn read_value(record: &KeyDirRecord) -> String {
-
     let mut file = File::open(FILE_PATH).unwrap();
 
     file.seek(SeekFrom::Start(record.value_pos as u64)).unwrap();

@@ -1,10 +1,10 @@
+use crate::persistence::KeyDirRecord;
+use crate::store::Command;
+use crate::store::store;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, TcpStream};
-use crate::persistence::KeyDirRecord;
-use crate::store::store;
-use crate::store::Command;
 
 pub async fn server(db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
     const IP_PORT: &str = "127.0.0.1:7878";
@@ -32,17 +32,17 @@ async fn handle_connection(mut socket: TcpStream, db: &Arc<Mutex<HashMap<String,
                 println!("Client disconnected");
                 return;
             }
-            Ok (_) => {}
+            Ok(_) => {}
         }
 
-        let response = store(db, parse_request(&line));
+        let response = store(db, parse_request(&line.trim()));
         buf_writer.write_all(response.as_bytes()).await.unwrap();
         buf_writer.flush().await.unwrap();
     }
 }
 
 fn parse_request(request: &str) -> Command {
-    let splitted: Vec<&str> = request.split_whitespace().collect();
+    let splitted: Vec<&str> = request.splitn(3, ' ').collect();
 
     match splitted.as_slice() {
         ["GET", key] => Command::Get {
@@ -53,7 +53,7 @@ fn parse_request(request: &str) -> Command {
             value: (*value).to_string(),
         },
         ["DELETE", key] => Command::Delete {
-            key: (*key).to_string()
+            key: (*key).to_string(),
         },
         _ => Command::Unknown,
     }

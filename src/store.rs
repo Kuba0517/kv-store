@@ -1,4 +1,4 @@
-use crate::persistence::{read_value, save, KeyDirRecord, StoreRecord};
+use crate::persistence::{KeyDirRecord, read_value, save};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -29,8 +29,8 @@ fn delete(db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>, key: &str) -> String {
         Some(_) => {
             save(key, "");
             String::from("OK\n")
-        },
-        None => String::from("NOT FOUND\n")
+        }
+        None => String::from("NOT FOUND\n"),
     }
 }
 
