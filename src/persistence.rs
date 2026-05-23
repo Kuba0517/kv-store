@@ -4,7 +4,6 @@ use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const FILE_PATH: &str = "./db.bin";
 const X25: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
 
 pub struct KeyDirRecord {
@@ -18,9 +17,9 @@ pub struct KeyDirRecord {
     timestamp: u64,
 }
 
-pub fn load() -> HashMap<String, KeyDirRecord> {
+pub fn load(path: &Path) -> HashMap<String, KeyDirRecord> {
     let mut db = HashMap::new();
-    let file = match File::open(FILE_PATH) {
+    let file = match File::open(path) {
         Ok(f) => f,
         Err(_) => return db,
     };
@@ -94,13 +93,11 @@ pub fn load() -> HashMap<String, KeyDirRecord> {
     db
 }
 
-pub fn save(key: &str, value: &str) -> KeyDirRecord {
-    let file_path = Path::new(FILE_PATH);
-
+pub fn save(path: &Path, key: &str, value: &str) -> KeyDirRecord {
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open(file_path)
+        .open(path)
         .unwrap();
 
     let timestamp = SystemTime::now()
@@ -143,8 +140,8 @@ pub fn save(key: &str, value: &str) -> KeyDirRecord {
     }
 }
 
-pub fn read_value(record: &KeyDirRecord) -> String {
-    let mut file = File::open(FILE_PATH).unwrap();
+pub fn read_value(path: &Path, record: &KeyDirRecord) -> String {
+    let mut file = File::open(path).unwrap();
 
     file.seek(SeekFrom::Start(record.value_pos as u64)).unwrap();
 

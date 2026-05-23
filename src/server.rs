@@ -5,22 +5,24 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::{TcpListener, TcpStream};
+use std::path::{Path, PathBuf};
 
-pub async fn server(db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
+pub async fn server(path: PathBuf, db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
     const IP_PORT: &str = "127.0.0.1:7878";
     let listener = TcpListener::bind(IP_PORT).await.unwrap();
 
     loop {
         let (socket, _) = listener.accept().await.unwrap();
         let db_clone = Arc::clone(db);
+        let path_clone = path.clone();
         tokio::spawn(async move {
             println!("Connected!!");
-            handle_connection(socket, &db_clone).await;
+            handle_connection(socket, &path_clone, &db_clone).await;
         });
     }
 }
 
-async fn handle_connection(mut socket: TcpStream, db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
+async fn handle_connection(mut socket: TcpStream, path: &Path, db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>) {
     let (reader, writer) = socket.split();
     let mut buf_reader = BufReader::new(reader);
     let mut buf_writer = BufWriter::new(writer);
@@ -35,7 +37,7 @@ async fn handle_connection(mut socket: TcpStream, db: &Arc<Mutex<HashMap<String,
             Ok(_) => {}
         }
 
-        let response = store(db, parse_request(&line.trim()));
+        let response = store(path, db, parse_request(&line.trim()));
         buf_writer.write_all(response.as_bytes()).await.unwrap();
         buf_writer.flush().await.unwrap();
     }
