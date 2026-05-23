@@ -34,6 +34,7 @@ fn delete(db: &Arc<Mutex<HashMap<String, KeyDirRecord>>>, key: &str) -> String {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Command {
     Get { key: String },
     Set { key: String, value: String },

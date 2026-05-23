@@ -58,3 +58,44 @@ fn parse_request(request: &str) -> Command {
         _ => Command::Unknown,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_get() {
+        let result = parse_request("GET foo");
+        assert_eq!(result, Command::Get {key: "foo".to_string()});
+    }
+
+    #[test]
+    fn parses_delete() {
+        let result = parse_request("DELETE foo");
+        assert_eq!(result, Command::Delete {key: "foo".to_string()})
+    }
+
+    #[test]
+    fn parses_set_with_single_value_input() {
+        let result = parse_request("SET foo bar1");
+        assert_eq!(result, Command::Set {key: "foo".to_string(), value: "bar1".to_string()})
+    }
+
+    #[test]
+    fn parses_set_with_multi_value_input() {
+        let result = parse_request("SET foo bar1 bar2");
+        assert_eq!(result, Command::Set { key: "foo".to_string(), value: "bar1 bar2".to_string() });
+    }
+
+    #[test]
+    fn returns_unknown_command_on_missing_value_for_set() {
+        let result = parse_request("SET foo");
+        assert_eq!(result, Command::Unknown);
+    }
+
+    #[test]
+    fn returns_unknown_command_one_random_command() {
+        let result = parse_request("RANDOM foo");
+        assert_eq!(result, Command::Unknown)
+    }
+}
